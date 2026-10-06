@@ -6,7 +6,7 @@ OpenAI-совместимый шлюз для [neuroflash AI](https://neuroflash
 export NF_CLIENT_ID="your-client-id"
 export NF_CLIENT_SECRET="your-client-secret"
 python3 nf_gate.py
-# → OpenAI-совместимый API на :8088
+# → OpenAI-совместимый API на :8090
 ```
 
 ## ✨ Возможности
@@ -21,6 +21,8 @@ python3 nf_gate.py
 | **Aктуальные модели** | `GET /v1/models` — живые, с `available` флагом (не хардкод) |
 | **Зависимости** | **0** — только Python 3.7+ (stdlib: `http.server`, `urllib`, `json`) |
 | **OMP / MCP / Any-OpenAI** | Совместим на уровне протокола |
+| **Truncation resilience** | Non‑stream: перехват обрезанного тела → повтор через SSE + склейка контекста. Stream: авто‑продолжение с понижением `reasoning_effort` (до 5 раз) |
+| **Reasoning** | Поддерживает полный enum neuroflash: `max|xhigh|high|medium|low|minimal|none` |
 
 ## 🚀 Быстрый старт
 
@@ -35,36 +37,42 @@ export NF_CLIENT_SECRET="ваш-client-secret"
 python3 nf_gate.py
 ```
 
+Или через `start.ps1` (читает `.env`, не требует ручного export):
+
+```powershell
+.\start.ps1
+```
+
 Workspace ID определится автоматически (первый workspace аккаунта).
 
 **Результат:**
 ```
 auth: OK
-workspace: auto a255b182-...
+workspace: auto xxxxxxxx-...
 models: 9 available of 27
   - claude-opus-5.5
   - claude-sonnet-5.5
   - gpt-6-luna
   ...
-neuroflash gateway on :8088
+neuroflash gateway on :8090
 ```
 
 ## 🔌 Примеры
 
 ```bash
 # список моделей (только доступные)
-curl http://localhost:8088/v1/models
+curl http://localhost:8090/v1/models
 
 # все модели (включая недоступные)
-curl 'http://localhost:8088/v1/models?all=1'
+curl 'http://localhost:8090/v1/models?all=1'
 
 # chat completion (streaming)
-curl -X POST http://localhost:8088/v1/chat/completions \
+curl -X POST http://localhost:8090/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"claude-sonnet-5.5","messages":[{"role":"user","content":"Привет!"}],"stream":true}'
 
 # с tool calling (native passthrough)
-curl -X POST http://localhost:8088/v1/chat/completions \
+curl -X POST http://localhost:8090/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model":"claude-sonnet-5.5",
@@ -73,7 +81,7 @@ curl -X POST http://localhost:8088/v1/chat/completions \
   }'
 
 # health
-curl http://localhost:8088/health
+curl http://localhost:8090/health
 ```
 
 ## 🔧 Переменные окружения
@@ -85,11 +93,14 @@ curl http://localhost:8088/health
 | `NF_WORKSPACE_ID` | нет | Переопределить workspace (если не auto) |
 | `NF_DEFAULT_MODEL` | нет | Модель по умолчанию (`claude-sonnet-5.5`) |
 | `NF_MODEL_MAP` | нет | Алиасы: `local-name:upstream-name,cheap:gpt-4.1-mini` |
+| `NF_REASONING_EFFORT` | нет | Уровень thinking: `max|xhigh|high|medium|low|minimal|none` |
+| `NF_MAX_CONTINUE` | нет | Продолжать обрезанный ответ (лимит хостинга ~150с) — до N раз. По умолч. 5 |
+| `NF_HOST` | нет | Адрес для прослушивания: `127.0.0.1` (только локально) или `0.0.0.0` (вся сеть) |
 
 ## 🖥 OMP Integration
 
 ```bash
-omp config set provider nf base_url=http://localhost:8088
+omp config set provider nf base_url=http://localhost:8090
 omp config set provider nf api_key=any
 omp config set provider nf models claude-sonnet-5.5,gpt-6-luna,gpt-6-sol
 ```
@@ -126,7 +137,7 @@ omp config set provider nf models claude-sonnet-5.5,gpt-6-luna,gpt-6-sol
 Всё проверено (eval, gateway live, streaming, tools):
 
 ```
-HEALTH: 200  {"ok":true,"workspace":"a255b182-..."}
+HEALTH: 200  {"ok":true,"workspace":"xxxxxxxx-..."}
 MODELS: 27 total, 9 available
 CHAT:  finish_reason="stop"
 TOOLS: finish_reason="tool_calls" — native passthrough (get_weather, Paris)
