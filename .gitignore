@@ -1,0 +1,13 @@
+# Secrets
+.env
+*.env
+.secrets/
+*.txt
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.bak
+secrets.txt
+creds.txt
